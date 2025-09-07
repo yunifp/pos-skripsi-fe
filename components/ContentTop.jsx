@@ -65,12 +65,26 @@ function ContentTop() {
     }
   }, []);
 
+
+
   useEffect(() => {
+    // Jangan lakukan fetch jika token belum siap
     if (!token) return;
-    fetchTotals({ outlet_id: outletId });
-    fetchOutlets();
+
+    // Fetch data utama
+    fetchTotals({ outlet_id: outletId, period: "day" });
     fetchLowStocks({ outlet_id: outletId });
-  }, [outletId, token, fetchTotals, fetchOutlets, fetchLowStocks]);
+
+    // Fetch outlets hanya sekali jika belum ada
+    if (!outlets || outlets.length === 0) {
+        fetchOutlets();
+    }
+    
+    // Nonaktifkan peringatan dependensi karena fetchTotals dan fetchLowStocks
+    // adalah fungsi yang tidak stabil dari hook custom Anda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outletId, token]); // Hanya bergantung pada outletId dan token
+
 
   useEffect(() => {
     if (totalsResult?.summary) {
@@ -82,6 +96,8 @@ function ContentTop() {
       setTotalsData({ amount: 0, count: 0 });
     }
   }, [totalsResult]);
+
+  
 
   return (
     <div className="w-full p-6 md:p-8 bg-white border border-slate-200 rounded-2xl shadow-sm">

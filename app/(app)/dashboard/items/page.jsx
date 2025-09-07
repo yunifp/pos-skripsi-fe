@@ -468,13 +468,12 @@ export default function Page() {
                   {...register("unit", { required: true })}
                 >
                   <option value="">Pilih satuan...</option>
-                  <option value="pcs">pil</option>
-                  <option value="botol">kapsul</option>
-                  <option value="kaleng">tablet</option>
-                  <option value="bungkus">sirup</option>
-                  <option value="box">salep</option>
-                  <option value="pack">gel</option>
-                  <option value="pack">injeksi</option>
+                  <option value="pcs">Pcs</option>
+                  <option value="kg">Kg</option>
+                  <option value="liter">Liter</option>
+                  <option value="bungkus">Bungkus</option>
+                  <option value="botol">Botol</option>
+                  <option value="sachet">Sachet</option>
                 </select>
                 {error?.unit && (
                   <small className="text-red-500">{error.unit}</small>

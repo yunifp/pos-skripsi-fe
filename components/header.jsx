@@ -13,7 +13,7 @@ import {
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import Image from "next/image";
-import logo from "../public/images/logo.png";
+import logo from "../public/images/KasKU..png";
 import LogoutDialog from "./ui/LogOutDialog";
 import { useRouter } from "next/navigation";
 import nookies from "nookies";

@@ -12,12 +12,13 @@ import {
   faUsers,
   faFileInvoiceDollar,
   faCashRegister,
+  faCartShopping
 } from "@fortawesome/free-solid-svg-icons";
 
 import ContentTop from "@/components/ContentTop";
 import Card from "@/components/card";
 
-function Dashboard() {
+const Dashboard = () => {
   const router = useRouter();
   const [token, setToken] = useState(null);
   const [role, setRole] = useState("");
@@ -35,7 +36,7 @@ function Dashboard() {
         router.push("/login"); // Redirect if token is invalid
       }
     } else {
-        router.push("/login"); // Redirect if no token
+      router.push("/login"); // Redirect if no token
     }
   }, [router]);
 
@@ -44,7 +45,7 @@ function Dashboard() {
     {
       path: "/dashboard/items",
       text: "Items",
-      icon: faCapsules,
+      icon: faCartShopping,
       subText: "Kelola item dan lacak inventaris.",
     },
     {
@@ -125,10 +126,10 @@ function Dashboard() {
     role === "ADMIN"
       ? adminMenu
       : role === "KASIR"
-      ? kasirMenu
-      : role === "STAFF"
-      ? staffMenu
-      : [];
+        ? kasirMenu
+        : role === "STAFF"
+          ? staffMenu
+          : [];
 
   return (
     // Main container with a modern background color
@@ -136,18 +137,18 @@ function Dashboard() {
       <main className="flex flex-col gap-8 pt-28 pb-12 px-6 md:px-10">
         <ContentTop />
         <div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-5">Menu Navigasi</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {menuItems.map((item, index) => (
-                    <Card
-                        key={index}
-                        onClick={() => router.push(item.path)}
-                        text={item.text}
-                        icon={item.icon}
-                        subText={item.subText}
-                    />
-                ))}
-            </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-5">Menu Navigasi</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {menuItems.map((item, index) => (
+              <Card
+                key={index}
+                onClick={() => router.push(item.path)}
+                text={item.text}
+                icon={item.icon}
+                subText={item.subText}
+              />
+            ))}
+          </div>
         </div>
       </main>
     </div>
