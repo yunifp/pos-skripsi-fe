@@ -1,12 +1,11 @@
 "use client";
 
-import { Header } from "@/components/header";
 import Cart from "@/components/pos/Cart";
 import ItemHeader from "@/components/pos/ItemHeader";
 import Items from "@/components/pos/Items";
 import Transaction from "@/components/pos/Transaction";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Pos = () => {
   const [amount, setAmount] = useState("");
@@ -17,51 +16,58 @@ const Pos = () => {
 
   useEffect(() => {
     setIsCartActive(search.length === 0);
-    setSearchItem([]);
+    if (search.length > 0) {
+        setSearchItem([]); 
+    }
   }, [search]);
 
   return (
-    <div>
-      <div className="grid grid-cols-4 w-screen min-h-screen">
-        <div className="col-span-2 flex flex-col items-center p-12 mt-20">
-          <div className="w-full max-w-xl">
+    <div className="bg-slate-100 w-full min-h-screen antialiased">
+      <div className="grid grid-cols-1 lg:grid-cols-5 w-full min-h-screen gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8">
+        
+        <div className="lg:col-span-3 flex flex-col">
+          <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full">
             <ItemHeader
               search={search}
               setSearch={setSearch}
               setSearchItem={setSearchItem}
             />
             <div className="mt-8">
-              <motion.div
-                key={isCartActive ? "cart" : "items"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.7 }}
-              >
-                {isCartActive ? (
-                  <Cart
-                    search={search}
-                    orderDetails={orderDetails}
-                    setOrderDetails={setOrderDetails}
-                  />
-                ) : (
-                  <Items
-                    setSearchItem={setSearchItem}
-                    searchItem={searchItem}
-                    setSearch={setSearch}
-                  />
-                )}
-              </motion.div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={isCartActive ? "cart" : "items"}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {isCartActive ? (
+                    <Cart
+                      search={search}
+                      orderDetails={orderDetails}
+                      setOrderDetails={setOrderDetails}
+                    />
+                  ) : (
+                    <Items
+                      setSearchItem={setSearchItem}
+                      searchItem={searchItem}
+                      setSearch={setSearch}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
-        <div className="col-span-2 flex justify-center p-8 mt-20 bg-[#8BB2B2]">
+
+        <div className="lg:col-span-2">
           <Transaction
             orderDetails={orderDetails}
             amount={amount}
             setAmount={setAmount}
           />
         </div>
+
       </div>
     </div>
   );

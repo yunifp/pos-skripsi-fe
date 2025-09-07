@@ -13,11 +13,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { MdFilterListAlt, MdPassword, MdTune } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/header";
 import useCrud from "@/hooks/useCRUD";
@@ -31,16 +30,19 @@ import {
   faTrash,
   faPlus,
   faEye,
+  faSearch,
+  faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 import Pagination from "@/components/Pagination";
 import nookies from "nookies";
-import {jwtDecode} from "jwt-decode";
-import Select from 'react-select';
-import logoReception from "../../../../public/images/logo.png";
+import { jwtDecode } from "jwt-decode";
+import Select from "react-select";
+import logoReception from "../../../../public/images/KasKU..png";
 import Image from "next/image";
-import html2pdf from 'html2pdf.js';
+import html2pdf from "html2pdf.js";
 import moment from "moment";
 import { useToast } from "@/hooks/use-toast";
+import numeral from "numeral";
 
 export default function Page({}) {
   const router = useRouter();
@@ -51,13 +53,12 @@ export default function Page({}) {
   const [selectedRow, setSelectedRow] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [outletid, setOutletid] = useState("");
+  const [outletid, setOutletid] = useState(""); // For form
   const [role, setRole] = useState("");
-  const [outletId, setOutletId] = useState("");
+  const [outletId, setOutletId] = useState(""); // For table filter
   const [name, setName] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const { toast } = useToast();
-  const dialogRef = useRef(null);
   const itemsPerPage = 10;
 
   const {
@@ -81,10 +82,10 @@ export default function Page({}) {
   }));
 
   useEffect(() => {
-    if(!outletid){
+    if (!outletid) {
       return;
     }
-    getItems({outlet_id : outletid});
+    getItems({ outlet_id: outletid });
     setSelectedItems([]);
   }, [outletid]);
 
@@ -99,7 +100,7 @@ export default function Page({}) {
     formState: { errors },
     reset,
     control,
-    setValue, 
+    setValue,
   } = useForm();
 
   const { fields, append, remove } = useFieldArray({
@@ -109,11 +110,10 @@ export default function Page({}) {
 
   const removeDetail = (index) => {
     const newSelectedItems = [...selectedItems];
-    newSelectedItems.splice(index, 1); 
+    newSelectedItems.splice(index, 1);
     setSelectedItems(newSelectedItems);
-    remove(index); 
+    remove(index);
   };
-  
 
   useEffect(() => {
     const token = nookies.get("token");
@@ -143,27 +143,13 @@ export default function Page({}) {
     reset(selectedData || {});
   }, [selectedData, reset]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dialogRef.current && !dialogRef.current.contains(event.target)) {
-        // Abaikan klik di luar dialog, dialog tidak akan tertutup
-        event.stopPropagation();
-      }
-    };
-
-    // Menambahkan event listener untuk klik di luar dialog
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      // Membersihkan event listener ketika komponen unmount
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-
   const onSubmit = async (data) => {
     if (fields.length === 0) {
-      toast.error("Details must have at least one item.");
+      toast({
+        title: "Operation Failed!",
+        description: "Details must have at least one item.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -172,31 +158,37 @@ export default function Page({}) {
         outlet_id: data?.outlet_id,
         kode_po: data?.kode_po,
         date_po: new Date(data.date_po).toISOString(),
-        items: data?.details.map(detail => ({
+        items: data?.details.map((detail) => ({
           item_id: detail?.item_id,
-          quantity: parseInt(detail?.qty, 10)
-        }))
+          quantity: parseInt(detail?.qty, 10),
+        })),
       };
 
       if (selectedData) {
+        // Update logic is not present in the original, but keeping structure
         await update(selectedData.id, newData);
         toast({
-          title: "Data successfully updated!",
-          description: "",
+          title: "Update Successful!",
+          description: "Item reception data has been updated.",
           variant: "success",
         });
-        } else {
+      } else {
         await create(newData);
         toast({
-          title: "Data successfully created!",
-          description: "",
+          title: "Creation Successful!",
+          description: "A new item reception has been added to the list.",
           variant: "success",
         });
       }
       reset();
       setIsOpen(false);
     } catch (err) {
-    }finally {
+      toast({
+        title: "Operation Failed!",
+        description: "Something went wrong. Please check the form and try again.",
+        variant: "destructive",
+      });
+    } finally {
       loadData();
     }
   };
@@ -205,17 +197,10 @@ export default function Page({}) {
     setCurrentPage(newPage);
   };
 
-
-  useEffect(() => {
-    if (!token) return;
-    fetchAllData({ page: currentPage, search });
-    getOutlets();
-  }, [token, currentPage, search]);
-
   const handleViewDetails = (row) => {
     setSelectedRow(row);
     setIsModalOpen(true);
-  }
+  };
 
   function loadData() {
     fetchAllData({
@@ -227,28 +212,28 @@ export default function Page({}) {
   }
 
   const addDetail = (e) => {
+    e.preventDefault();
     if (!outletid) {
       toast({
-        title: "please select outlet first",
-          description: "",
-          variant: "destructive",
+        title: "Please select an outlet first",
+        description: "You must select an outlet before adding items.",
+        variant: "destructive",
       });
       return;
     }
-    e.preventDefault(); 
-    append({ item_id: "", qty: 0 });
+    append({ item_id: "", qty: 1 });
   };
 
   const downloadPDF = () => {
-    const element = document.getElementById('receptions-details');
+    const element = document.getElementById("receptions-details");
     const opt = {
-      margin:       0.5,
-      filename:     'receptions-invoice.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+      margin: 0.5,
+      filename: `reception-${selectedRow?.id}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
     };
-  
+
     html2pdf().from(element).set(opt).save();
   };
 
@@ -263,85 +248,100 @@ export default function Page({}) {
     reset();
   };
 
-  
   return (
-    <div>
-      <div className="bg-slate-100 w-screen min-h-screen py-12 px-4 lg:px-32 pb-32">
-        <div className="bg-white p-12 rounded-xl shadow mt-20">
-          <div className="flex justify-between items-center">
-            <h1 className="font-bold mb-8 w-full">List of Item Receptions</h1>
-            <div className="flex items-center justify-end gap-4 w-full">
-              <Input
-                className="max-w-lg bg-gray-50 rounded-full h-16 text-lg px-4"
-                placeholder="Search by Receipt Number"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+    <div className="bg-slate-50 w-full min-h-screen py-24 antialiased">
+      <div className="container mx-auto px-4">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-lg shadow-slate-200/70 border border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <Button
+                variant="ghost"
+                className="group mb-2 text-slate-700 hover:text-sky-600 bg-slate-100 hover:bg-slate-300 h-9 rounded-2xl flex items-center"
+                onClick={() => router.push("/dashboard")}
+              >
+                <FontAwesomeIcon
+                  icon={faArrowLeft}
+                  className="mr-2 transform transition-transform duration-300 group-hover:-translate-x-1"
+                />
+                Back
+              </Button>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-800">
+                Item Receptions Management
+              </h1>
             </div>
-          </div>
 
-          <div className="flex gap-2">
-            <Button variant="button1" onClick={() => router.push("/dashboard")}>
-              <FontAwesomeIcon icon={faArrowLeft} />
-            </Button>
-            <Button
-              variant="button1"
-              onClick={() => {
-                setSelectedData(null);
-                setIsOpen(true);
-              }}
-            >
-              Add Item Reception +
-            </Button>
-            <div className="items-center gap-4">
-            {role == "ADMIN" && (
+            <div className="flex items-center gap-3">
+              {role === "ADMIN" && (
+                <div className="relative">
                   <select
-                    id="outlet_id"
-                    className="col-span-5 border rounded-full min-w-40 text-sm py-1 px-2 h-[36px] bg-transparent border-none focus:outline-none focus:ring-0 focus:ring-transparent active:ring-0 active:ring-transparent hover:ring-0"
+                    id="outlet_id_filter"
+                    className="h-11 appearance-none border border-slate-300 rounded-lg w-full sm:w-48 text-sm py-1 pl-4 pr-10 bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
                     value={outletId}
                     onChange={(e) => {
                       setOutletId(e.target.value);
                     }}
                   >
-                    <option value="">All Outlet</option>
-                    {outlets?.map((row) => {
-                      return (
-                        <option key={row.id} value={row.id}>
-                          {row.name}
-                        </option>
-                      );
-                    })}
+                    <option value="">All Outlets</option>
+                    {outlets?.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.name}
+                      </option>
+                    ))}
                   </select>
-                )}
+                </div>
+              )}
+              <Button
+                className="h-11 px-5 inline-flex items-center justify-center rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all font-semibold gap-2 shadow-sm hover:shadow-md transform hover:-translate-y-px"
+                onClick={() => {
+                  setSelectedData(null);
+                  reset({});
+                  setIsOpen(true);
+                }}
+              >
+                <FontAwesomeIcon icon={faPlus} /> Add Reception
+              </Button>
             </div>
           </div>
 
-          <div className="mt-8 rounded-xl overflow-hidden">
-            <Table className="min-w-full table-auto border-collapse">
-              <TableHeader>
+          <div className="mb-6 relative">
+            <FontAwesomeIcon
+              icon={faSearch}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <Input
+              className="w-full max-w-sm bg-slate-100 border-transparent rounded-lg h-11 text-base pl-11 pr-4 focus:ring-2 focus:ring-sky-500 focus:bg-white focus:border-sky-500 transition"
+              placeholder="Search by Receipt or Order Number..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <Table>
+              <TableHeader className="bg-slate-100/80">
                 <TableRow>
-                  <TableHead className="w-[50px] p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="w-[60px] p-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     No.
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-left text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Receipt Number
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-left text-white">
-                    No. Order Letter
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Order Number
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-left text-white">
-                    Date
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Receipt Date
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-left text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     User
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-left text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Outlet
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-left text-white">
-                    Date Order
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Order Date
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Action
                   </TableHead>
                 </TableRow>
@@ -350,28 +350,28 @@ export default function Page({}) {
                 {receptions?.map((data, index) => (
                   <TableRow
                     key={data.id}
-                    className="border-b hover:bg-gray-100 transition-colors"
+                    className="border-b border-slate-100 hover:bg-sky-50/50 transition-colors [&:nth-child(even)]:bg-slate-50/50"
                   >
-                    <TableCell className="p-2 text-center font-bold">
+                    <TableCell className="p-4 text-center font-medium text-slate-700">
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </TableCell>
-                    <TableCell className="p-2">{data.id}</TableCell>
-                    <TableCell className="p-2">{data.kode_po}</TableCell>
-                    <TableCell className="p-2">{moment(data.created_at).format("DD MMM YYYY - HH:mm:ss")}
+                    <TableCell className="p-4 text-slate-500 font-mono text-xs">{data.id}</TableCell>
+                    <TableCell className="p-4 text-slate-800 font-medium">{data.kode_po}</TableCell>
+                    <TableCell className="p-4 text-slate-600">
+                      {moment(data.created_at).format("DD MMM YYYY - HH:mm:ss")}
                     </TableCell>
-                    <TableCell className="p-2">{data.user?.name}</TableCell>
-                    <TableCell className="p-2">{data.outlet?.name}</TableCell>
-                    <TableCell className="p-2">{moment(data.date_po).format("DD MMM YYYY")}</TableCell>
-                    <TableCell className="p-2 text-center">
+                    <TableCell className="p-4 text-slate-600">{data.user?.name}</TableCell>
+                    <TableCell className="p-4 text-slate-800 font-semibold">{data.outlet?.name}</TableCell>
+                    <TableCell className="p-4 text-slate-600">{moment(data.date_po).format("DD MMM YYYY")}</TableCell>
+                    <TableCell className="p-4 text-center">
                       <div className="flex justify-center gap-2">
                         <Button
-                          variant="success"
-                          className="bg-[#4f6e6e] text-white px-4 py-2 rounded hover:bg-[#253b3b] transition-colors"
+                          variant="ghost"
+                          className="h-9 w-9 p-0 flex items-center justify-center rounded-md bg-sky-100 text-sky-600 hover:bg-sky-200 hover:text-sky-700 transition-all"
                           onClick={() => handleViewDetails(data)}
                         >
                           <FontAwesomeIcon icon={faEye} />
                         </Button>
-                        
                       </div>
                     </TableCell>
                   </TableRow>
@@ -380,289 +380,333 @@ export default function Page({}) {
             </Table>
 
             {receptions?.length <= 0 && (
-          <div className="w-full flex flex-col justify-center h-96 items-center opacity-60">
-            <img src="/images/empty.png" alt="" />
-            <p className="mt-3">No item</p>
+              <div className="w-full flex flex-col justify-center h-96 items-center text-slate-500 bg-slate-50/30">
+                <img
+                  src="/images/empty.png"
+                  alt="No data"
+                  className="w-40 h-40 opacity-60 mb-4"
+                />
+                <p className="text-xl font-semibold">No Receptions Found</p>
+                <p className="text-sm text-slate-400">
+                  Try adjusting your search or filters to find what you're
+                  looking for.
+                </p>
+              </div>
+            )}
           </div>
-        )}
-
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              itemsPerPage={10}
-              totalItemsInCurrentPage={receptions?.length}
-            />
-          </div>
+          {receptions?.length > 0 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                itemsPerPage={10}
+                totalItemsInCurrentPage={receptions?.length}
+              />
+            </div>
+          )}
         </div>
+      </div>
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild></DialogTrigger>
-          <DialogContent 
-          hideCloseButton={true} 
-          onInteractOutside={(event) => event.preventDefault()}          
-          className="w-full max-w-[90vw] sm:max-w-[80vw] lg:max-w-[60vw] py-8 px-4 sm:px-8 lg:px-12 max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
-                {selectedData ? "Update Item Reception" : "Add Item Reception"}
-              </DialogTitle>
-              <SheetDescription></SheetDescription>
-            </DialogHeader>
-            <div className="">
-              <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4 text-left">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Left side */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent
+          hideCloseButton={true}
+          onInteractOutside={(event) => event.preventDefault()}
+          className="w-full max-w-[90vw] sm:max-w-[80vw] lg:max-w-[60vw] max-h-[90vh] overflow-y-auto"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-slate-800">
+              {selectedData ? "Update Item Reception" : "Add New Item Reception"}
+            </DialogTitle>
+            <DialogDescription>
+              Please fill in the form below. Required fields are marked with an
+              asterisk (*).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="">
+            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6 py-4 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                {/* Left side */}
+                <div className="flex flex-col gap-4">
                   <div>
-                    <div className="mb-4">
-                      <Label className="block text-sm font-medium text-gray-700 py-2">Users</Label>
-                      <p className="text-lg font-semibold">{name}</p>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <Label className="block text-sm font-medium text-gray-700 py-2" htmlFor="kode_po">Order Number</Label>
-                      <Input
-                        id="kode_po"
-                        className="w-full"
-                        {...register("kode_po", { required: "Kode PO is required" })}
-                      />
-                      {errors.kode_po && (
-                        <small className="text-rose-500 text-right">{errors.kode_po.message}</small>
-                      )}
-                    </div>
-
-                    <div className="">
-                      <input
-                        type="hidden"
-                        {...register("user_id")}
-                        value={jwtDecode(nookies.get("token").token).user_id}
-                      />
-                      {role === "ADMIN" ? (
-                        <div className="">
-                          <Label className="block text-sm font-medium text-gray-700 py-2" htmlFor="outlet_id">Outlet</Label>
-                          <Select
-                            id="outlet_id"
-                            className="col-span-5 items-center rounded-md text-sm py-2 w-full sm:w-[500px]"
-                            options={outletOptions}
-                            // value={outletOptions.find(option => option.value === outletid)} 
-                            onChange={(selectedOption) => {
-                              setValue("outlet_id", selectedOption.value);
-                              setOutletid(selectedOption.value);
-                            }}
-                            placeholder="Select Outlet"
-                            required
-                          />
-                        </div>
-                      ) : (
-                        <input
-                          type="hidden"
-                          {...register("outlet_id")}
-                          value={outletid}
-                        />
-                      )}
-                      {errors.outlet_id && (
-                        <small className="text-rose-500">{errors.outlet_id.message}</small>
-                      )}
-                    </div>
+                    <Label className="font-medium text-slate-700">User</Label>
+                    <p className="text-base font-semibold text-slate-800 pt-1">{name}</p>
                   </div>
 
-                  {/* Right side */}
                   <div>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 py-2">Goods Receipt Date</label>
-                      <p className="text-lg font-semibold">{moment(Date.now()).format("DD MMM YYYY - HH:mm:ss")}</p>
-                    </div>
-                    <div className="mb-4">
-                      <Label className="block text-sm font-medium text-gray-700 py-2" htmlFor="date_po">Order Date</Label>
-                      <Input
-                        id="date_po"
-                        type="date"
-                        className="w-full"
-                        {...register("date_po", { required: "Date PO is required" })}
-                      />
-                      {errors.date_po && (
-                        <small className="text-rose-500 text-right">{errors.date_po.message}</small>
-                      )}
-                    </div>
+                    <Label htmlFor="kode_po" className="font-medium text-slate-700">
+                      Order Number <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="kode_po"
+                      className="h-11 mt-1"
+                      placeholder="e.g., PO-12345"
+                      {...register("kode_po", { required: "Order Number is required" })}
+                    />
+                    {errors.kode_po && (
+                      <small className="text-red-500">{errors.kode_po.message}</small>
+                    )}
                   </div>
                 </div>
 
-                <div className="">
-                  <Label className="text-right font-bold text-lg tracking-wide">Detail Items</Label>
+                {/* Right side */}
+                <div className="flex flex-col gap-4">
                   <div>
-                    <Button variant="button2" onClick={addDetail} className="mt-2 mb-4">
-                      <FontAwesomeIcon icon={faPlus} /> Add Item
-                    </Button>
+                    <Label className="font-medium text-slate-700">Goods Receipt Date</Label>
+                    <p className="text-base font-semibold text-slate-800 pt-1">
+                      {moment(Date.now()).format("DD MMM YYYY - HH:mm:ss")}
+                    </p>
                   </div>
-                  <div className={`border p-4 rounded-md ${fields.length > 5 ? 'max-h-[200px] overflow-y-scroll' : ''}`}>
-                    <table className="w-full text-sm bg-white rounded-lg shadow border border-gray-300">
-                      <thead className="bg-gray-200">
-                        <tr>
-                          <th className="p-2 text-left">No.</th>
-                          <th className="p-2 text-left">Item</th>
-                          <th className="p-2 text-left">Quantity</th>
-                          <th className="p-2 text-left">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {fields.map((field, index) => (
-                          <tr key={field.id} className="border-b">
-                            <td className="p-2">{index + 1}</td>
-                            <td className="p-2">
+                  <div>
+                    <Label htmlFor="date_po" className="font-medium text-slate-700">
+                      Order Date <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="date_po"
+                      type="date"
+                      className="h-11 mt-1"
+                      {...register("date_po", { required: "Order Date is required" })}
+                    />
+                    {errors.date_po && (
+                      <small className="text-red-500">{errors.date_po.message}</small>
+                    )}
+                  </div>
+                </div>
+
+                {/* Outlet - Full Width */}
+                <div className="sm:col-span-2">
+                  <input
+                    type="hidden"
+                    {...register("user_id")}
+                    value={jwtDecode(nookies.get("token").token).user_id}
+                  />
+                  {role === "ADMIN" ? (
+                    <div>
+                      <Label htmlFor="outlet_id" className="font-medium text-slate-700">
+                        Outlet <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        id="outlet_id"
+                        className="mt-1"
+                        options={outletOptions}
+                        onChange={(selectedOption) => {
+                          setValue("outlet_id", selectedOption.value, { shouldValidate: true });
+                          setOutletid(selectedOption.value);
+                        }}
+                        placeholder="Select Outlet"
+                        required
+                      />
+                       {errors.outlet_id && (
+                          <small className="text-red-500">{errors.outlet_id.message}</small>
+                        )}
+                    </div>
+                  ) : (
+                    <input
+                      type="hidden"
+                      {...register("outlet_id", { value: outletid })}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label className="font-bold text-lg tracking-wide text-slate-800">Detail Items</Label>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addDetail}
+                    className="mt-2 mb-4"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="mr-2" /> Add Item
+                  </Button>
+                </div>
+                <div className={`border rounded-lg ${fields.length > 5 ? 'max-h-[250px] overflow-y-auto' : ''}`}>
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase">No.</th>
+                        <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase w-3/5">Item</th>
+                        <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase">Quantity</th>
+                        <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fields.map((field, index) => (
+                        <tr key={field.id} className="border-t">
+                          <td className="p-2 font-medium">{index + 1}</td>
+                          <td className="p-2">
                             <Select
                               id={`details.${index}.item_id`}
-                              className="col-span-5 rounded-md text-sm py-2 w-full sm:w-[500px]"
                               options={itemOptions.filter(
-                                (option) => !selectedItems.includes(option.value) 
+                                (option) => !selectedItems.includes(option.value)
                               )}
                               onChange={(selectedOption) => {
                                 const newSelectedItems = [...selectedItems];
                                 newSelectedItems[index] = selectedOption.value;
                                 setSelectedItems(newSelectedItems);
-                                setValue(`details.${index}.item_id`, selectedOption.value);
+                                setValue(`details.${index}.item_id`, selectedOption.value, { shouldValidate: true });
                               }}
-                              // value={selectedItems[index] ? { value: selectedItems[index], label: itemOptions.find(opt => opt.value === selectedItems[index])?.label } : null}
                               placeholder="Select Item"
                               required
                             />
-                            </td>
-                            <td className="p-2">
-                              <Input
-                                type="number"
-                                className="w-full border rounded-md text-sm p-2"
-                                {...register(`details.${index}.qty`, {
-                                  required: "Quantity is required",
-                                  min: { value: 1, message: "Qty not 0" },
-                                })}
-                              />
-                              {errors.details?.[index]?.qty && (
-                                <small className="text-rose-500 text-left">{errors.details[index].qty.message}</small>
-                              )}
-                            </td>
-                            <td className="p-2">
-                              <Button
-                                variant="destructive"
-                                onClick={() => removeDetail(index)}
-                              >
-                                <FontAwesomeIcon icon={faTrash} />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {!loading ? (
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="buttonCancel"
-                      className="w-32"
-                      type="button"
-                      onClick={handleCancel}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="btn-submit w-32"
-                      variant="button2"
-                      type="submit"
-                    >
-                      {selectedData ? "Update" : "Save"}{" "}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex justify-end w-full">
-                    <img className="w-12" src="/images/loader.gif" alt="" />
-                  </div>
-                )}
-              </form>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-          <DialogContent className="max-w-md p-8 border border-[#638B8B] rounded-lg shadow-lg bg-gradient-to-r transform transition-transform duration-300 ease-in-out">
-            <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl lg:text-2xl">
-                Confirm Exit
-              </DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <p>Are you sure you want to exit? Your data will not be saved.</p>
-            </div>
-            <DialogFooter className="flex justify-end gap-2">
-              <Button variant="buttonCancel" onClick={() => setIsConfirmOpen(false)}>
-                No
-              </Button>
-              <Button variant="button2" onClick={handleConfirmCancel}>
-                Yes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-  
-      {selectedRow && (
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogContent className="max-w-full sm:max-w-[500px] md:max-w-[700px] lg:max-w-[900px] p-8 border border-[#638B8B] rounded-lg shadow-lg bg-gradient-to-r  transform transition-transform duration-300 ease-in-out">
-              <div id="receptions-details">
-
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h2 className="text-3xl font-extrabold text-[#4F6A6A]">Goods receipt</h2>
-                    <p className="text-lg font-semibold text-[#638B8B]">Receipt number : {selectedRow.id}</p>
-                    <p className="text-lg font-semibold text-[#638B8B]">Receipt date : {moment(selectedRow.created_at).format("DD MMM YYYY - HH:mm:ss")}</p>
-                  </div>
-                  <div className="flex items-center">
-                    <Image src={logoReception} alt="Fisika Farma Logo" className="w-24 h-auto object-contain" />
-                  </div>
-                </div>
-
-                <div className="mb-8 bg-white p-4 rounded-lg shadow-inner border border-[#8BB2B2]">
-                  <p><strong>No. Order : </strong> {selectedRow.kode_po}</p>
-                  <p><strong>Order date : </strong> {moment(selectedRow.date_po).format("DD MMM YYYY")}</p>
-                  <p><strong>Cashier Name : </strong> {selectedRow.user?.name}</p>
-                  <p><strong>Outlet : </strong> {selectedRow.outlet?.name}</p>
-                </div>
-
-                <hr className="my-6 border-[#638B8B]" />
-
-                <div className="mb-8">
-                  <table className="w-full text-sm bg-white rounded-lg shadow border border-[#638B8B]">
-                    <thead className="bg-[#8BB2B2]">
-                      <tr className="border-b">
-                      <th className="text-left p-2 text-white">No.</th>
-                        <th className="text-left p-2 text-white">Item</th>
-                        <th className="text-left p-2 text-white">Unit</th>
-                        <th className="text-left p-2 text-white">Quantity Requested</th>
-                        <th className="text-left p-2 text-white">Quantity Received</th>
-                        <th className="text-left p-2 text-white">Unit Price</th>
-                        <th className="text-right p-2 text-white">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedRow.item_reception_details.map((item, index) => (
-                        <tr key={item.id} className="border-b">
-                          <td className="p-2"> {(currentPage - 1) * itemsPerPage + index + 1}</td>
-                          <td className="p-2">{item.item?.name}</td>
-                          <td className="p-2">{item.item?.unit}</td>
-                          <td className="p-2">{item.quantity}</td>
-                          <td className="p-2">{item.quantity}</td>
-                          <td className="p-2">Rp {Number(item.item?.price).toLocaleString('id-ID')}</td>
-                          <td className="p-2 text-right">Rp {(item.quantity * item.item?.price).toLocaleString('id-ID')}</td>
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              className="h-10"
+                              {...register(`details.${index}.qty`, {
+                                required: "Qty is required",
+                                min: { value: 1, message: "Min 1" },
+                              })}
+                            />
+                            {errors.details?.[index]?.qty && (
+                              <small className="text-red-500">{errors.details[index].qty.message}</small>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-9 w-9 p-0 flex items-center justify-center rounded-md bg-rose-100 text-rose-600 hover:bg-rose-200 hover:text-rose-700 transition-all"
+                              onClick={() => removeDetail(index)}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
-                <DialogFooter className="flex justify-center mt-4">    
-                  <Button onClick={downloadPDF} className="bg-[#638B8B] text-white hover:bg-[#4F6A6A] py-2 px-4 rounded-sm shadow-md transition duration-300 transform hover:scale-105">Download PDF</Button>
-                  </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+
+              <DialogFooter className="mt-6 pt-4 border-t border-slate-200">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-sky-600 hover:bg-sky-700 min-w-[120px]"
+                  type="submit"
+                  disabled={loading}
+                >
+                   {loading ? (
+                    <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                  ) : selectedData ? (
+                    "Update"
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-800">
+                Confirm Exit
+              </DialogTitle>
+              <DialogDescription className="text-slate-600 pt-2">
+                Are you sure you want to exit? Your unsaved changes will be lost.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-6 flex sm:justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsConfirmOpen(false)}
+              >
+                No
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmCancel}>
+                Yes, Exit
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+      {selectedRow && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="max-w-full sm:max-w-[500px] md:max-w-[700px] lg:max-w-[900px]">
+            <div id="receptions-details" className="p-4">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className="text-3xl font-extrabold text-[#4F6A6A]">
+                    Goods Receipt
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Receipt number : {selectedRow.id}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    Receipt date :{" "}
+                    {moment(selectedRow.created_at).format(
+                      "DD MMM YYYY - HH:mm:ss"
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <Image
+                    src={logoReception}
+                    alt="Logo"
+                    className="w-24 h-auto object-contain"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-8 bg-slate-50 p-4 rounded-lg border border-slate-200 grid grid-cols-2 gap-x-8 gap-y-2">
+                <p><strong>No. Order:</strong> {selectedRow.kode_po}</p>
+                <p><strong>Cashier Name:</strong> {selectedRow.user?.name}</p>
+                <p><strong>Order date:</strong> {moment(selectedRow.date_po).format("DD MMM YYYY")}</p>
+                <p><strong>Outlet:</strong> {selectedRow.outlet?.name}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100/80">
+                    <tr>
+                      <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase">No.</th>
+                      <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase">Item</th>
+                      <th className="p-2 text-left text-xs font-semibold text-slate-600 uppercase">Unit</th>
+                      <th className="p-2 text-right text-xs font-semibold text-slate-600 uppercase">Quantity</th>
+                      <th className="p-2 text-right text-xs font-semibold text-slate-600 uppercase">Unit Price</th>
+                      <th className="p-2 text-right text-xs font-semibold text-slate-600 uppercase">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedRow.item_reception_details.map((item, index) => (
+                      <tr key={item.id} className="border-t">
+                        <td className="p-2">{index + 1}</td>
+                        <td className="p-2 font-medium">{item.item?.name}</td>
+                        <td className="p-2">{item.item?.unit}</td>
+                        <td className="p-2 text-right">{item.quantity}</td>
+                        <td className="p-2 text-right">Rp {numeral(item.item?.price).format("0,0")}</td>
+                        <td className="p-2 text-right font-semibold">Rp {numeral(item.quantity * item.item?.price).format("0,0")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <DialogFooter className="flex justify-center mt-4">
+              <Button
+                onClick={downloadPDF}
+                className="bg-sky-600 hover:bg-sky-700"
+              >
+                Download PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

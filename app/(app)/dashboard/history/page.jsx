@@ -13,21 +13,21 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Header } from "@/components/header";
 import Pagination from "@/components/Pagination";
 import useCrud from "@/hooks/useCRUD";
-import { faArrowLeft, faEye, faNewspaper } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faEye, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "next/navigation";
 import logoReception from "../../../../public/images/logo.png";
 import Image from "next/image";
-// import html2pdf from 'html2pdf.js';
 import numeral from "numeral";
 import moment from "moment";
+
 export default function Page() {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -36,7 +36,7 @@ export default function Page() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [statusFilter, setStatusFilter] = useState("All");
-  const [hasRejected, setHasRejected] = useState(true);
+  
   const {
     data: histories,
     token,
@@ -47,12 +47,19 @@ export default function Page() {
   useEffect(() => {
     if (!token) return;
     loadData();
-  }, [currentPage, search, token]);
+  }, [currentPage, search, statusFilter, token]);
 
+  useEffect(() => {
+    if (!token) return;
+    setCurrentPage(1);
+    loadData();
+  }, [search, statusFilter]);
+  
   function loadData() {
     fetchAllData({
       page: currentPage,
       search,
+      status: statusFilter !== "All" ? statusFilter : "",
       perPage: itemsPerPage,
     });
   }
@@ -60,31 +67,6 @@ export default function Page() {
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
   };
-
-
-  useEffect(() => {
-    if (!token) return;
-    loadData();
-  }, [currentPage, search, statusFilter, token]);
-
-  function loadData() {
-    fetchAllData({
-      page: currentPage,
-      search,
-      status: statusFilter != "All" ? statusFilter : "",
-      perPage: itemsPerPage,
-    });
-  }
-
-  useEffect(() => {
-    if (histories) {
-      if (statusFilter === "All") {
-        const hasRejectedData = histories.some((history) => history.status === "rejected");
-        setHasRejected(hasRejectedData);
-      }
-    }
-  }, [histories, statusFilter]);
-
 
   const getStatusText = (status) => {
     switch (status) {
@@ -95,33 +77,20 @@ export default function Page() {
       case "rejected":
         return "Rejected";
       default:
-        return status;
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case "on_process":
-        return "On Process";
-      case "success":
-        return "Success";
-      case "rejected":
-        return "Rejected";
-      default:
-        return status;
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
 
   const getStatusStyles = (status) => {
     switch (status) {
       case "success":
-        return "bg-green-200 text-green-800";
+        return "bg-green-100 text-green-800";
       case "on_process":
-        return "bg-yellow-200 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800";
       case "rejected":
-        return "bg-red-200 text-red-800";
+        return "bg-rose-100 text-rose-800";
       default:
-        return "bg-gray-200 text-gray-800";
+        return "bg-slate-100 text-slate-800";
     }
   };
 
@@ -130,7 +99,7 @@ export default function Page() {
     setIsModalOpen(true);
   };
 
-  const downloadPDF = async () => { 
+  const downloadPDF = async () => {
     const element = document.getElementById('transaction-details');
     if (!element) return;
 
@@ -138,7 +107,7 @@ export default function Page() {
 
     const opt = {
       margin: 0.5,
-      filename: `invoice-${selectedRow.public_id}.pdf`, 
+      filename: `invoice-${selectedRow.public_id}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -148,66 +117,78 @@ export default function Page() {
   };
 
   return (
-    <div>
-      <div className="bg-slate-100 w-screen min-h-screen py-12 px-4 lg:px-32 pb-32">
-        <div className="bg-white p-12 rounded-xl shadow lg:mt-20 md:mt-16 mt-10">
-          <div className="flex justify-between items-center">
-            <h1 className="font-bold mb-8 w-full">Transaction History</h1>
-            <div className="flex items-center justify-end gap-4 w-full">
+    <div className="bg-slate-50 w-full min-h-screen py-24 antialiased">
+      <div className="container mx-auto px-4">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-lg shadow-slate-200/70 border border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <Button
+                variant="ghost"
+                className="group mb-2 text-slate-700 hover:text-sky-600 bg-slate-100 hover:bg-slate-300 h-9 rounded-2xl flex items-center"
+                onClick={() => router.push("/dashboard")}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} className="mr-2 transform transition-transform duration-300 group-hover:-translate-x-1" />
+                Back
+              </Button>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-800">
+                Transaction History
+              </h1>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+            <div className="relative w-full max-w-sm">
+              <FontAwesomeIcon
+                icon={faSearch}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              />
               <Input
-                className="max-w-lg bg-gray-50 rounded-full h-16 text-lg px-4"
-                placeholder="Search by ID"
+                className="w-full bg-slate-100 border-transparent rounded-lg h-11 text-base pl-11 pr-4 focus:ring-2 focus:ring-sky-500 focus:bg-white focus:border-sky-500 transition"
+                placeholder="Search by Transaction ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-          </div>
-          <div className="flex center gap-5">
-            <Button variant="button1" onClick={() => router.push("/dashboard")} className="mt-2">
-              <FontAwesomeIcon icon={faArrowLeft} />
-            </Button>
-
-            <div className="flex border-b mb-4">
+            <div className="flex border-b border-slate-200">
               {["All", "success", "on_process", "rejected"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-6 py-2 focus:outline-none ${statusFilter === status
-                    ? "font-bold text-green-700 border-b-4 border-green-700"
-                    : "text-gray-500"
-                    }`}
+                  className={`px-4 py-2 text-sm sm:text-base font-medium transition-colors duration-200 ease-in-out focus:outline-none ${
+                    statusFilter === status
+                      ? "border-b-2 border-sky-500 text-sky-600 font-semibold"
+                      : "text-slate-500 hover:text-slate-700 border-b-2 border-transparent"
+                  }`}
                 >
-                  {getStatusLabel(status)}
+                  {getStatusText(status)}
                 </button>
               ))}
             </div>
-
-
           </div>
 
-          <div className="mt-2 rounded-xl overflow-hidden">
-            <Table className="min-w-full table-auto border-collapse">
-              <TableHeader>
-                <TableRow className="items-center">
-                  <TableHead className="w-[50px] p-2 bg-[#8BB2B2] text-center text-white">
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <Table>
+              <TableHeader className="bg-slate-100/80">
+                <TableRow>
+                  <TableHead className="w-[60px] p-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     No.
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Transaction ID
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Date
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Cashier Name
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Total Payment
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Status
                   </TableHead>
-                  <TableHead className="p-2 bg-[#8BB2B2] text-center text-white">
+                  <TableHead className="p-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
                     Action
                   </TableHead>
                 </TableRow>
@@ -216,115 +197,132 @@ export default function Page() {
                 {histories?.map((history, index) => (
                   <TableRow
                     key={history.id}
-                    className="border-b hover:bg-gray-100 transition-colors"
+                    className="border-b border-slate-100 hover:bg-sky-50/50 transition-colors [&:nth-child(even)]:bg-slate-50/50"
                   >
-                    <TableCell className="p-2 text-center font-bold">
+                    <TableCell className="p-4 text-center font-medium text-slate-700">
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </TableCell>
-                    <TableCell className="p-2 text-center">{history.public_id}</TableCell>
-                    <TableCell className="p-2 text-center">
-                      {moment(history.created_at).format("DD MMM YYYY - HH:mm:ss")}
+                    <TableCell className="p-4 text-slate-600 font-mono text-xs">{history.public_id}</TableCell>
+                    <TableCell className="p-4 text-slate-600">
+                      {moment(history.created_at).format("DD MMM YYYY - HH:mm")}
                     </TableCell>
-                    <TableCell className="p-2 text-center">{history.user?.name}</TableCell>
-                    <TableCell className="p-2 text-center">Rp. {numeral(history.total_payment).format("")}</TableCell>
-                    <TableCell className={`p-2 text-center font-bold ${getStatusStyles(history.status)}`}>
-                      {getStatusText(history.status)}
+                    <TableCell className="p-4 text-slate-800 font-medium">{history.user?.name}</TableCell>
+                    <TableCell className="p-4 font-semibold text-sky-700">Rp {numeral(history.total_payment).format("0,0")}</TableCell>
+                    <TableCell className="p-4 text-center">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusStyles(history.status)}`}>
+                            {getStatusText(history.status)}
+                        </span>
                     </TableCell>
-                    <TableCell className="p-2 text-center">
+                    <TableCell className="p-4 text-center">
                       {history.status === "success" ? (
                         <Button
-                          variant="success"
-                          className="bg-[#4f6e6e] text-white px-4 py-2 rounded hover:bg-[#253b3b] transition-colors"
+                          variant="ghost"
+                          className="h-9 w-9 p-0 flex items-center justify-center rounded-md bg-sky-100 text-sky-600 hover:bg-sky-200 hover:text-sky-700 transition-all"
                           onClick={() => handleViewDetails(history)}
                         >
                           <FontAwesomeIcon icon={faEye} />
                         </Button>
                       ) : (
-                        <span className="text-gray-500"></span>
+                        <span className="text-slate-400">-</span>
                       )}
                     </TableCell>
-
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
 
             {histories?.length <= 0 && (
-              <div className="w-full flex flex-col justify-center h-96 items-center opacity-60">
-                <img src="/images/empty.png" alt="" />
-                <p className="mt-3">No item</p>
+              <div className="w-full flex flex-col justify-center h-96 items-center text-slate-500 bg-slate-50/30">
+                <img
+                  src="/images/empty.png"
+                  alt="No data"
+                  className="w-40 h-40 opacity-60 mb-4"
+                />
+                <p className="text-xl font-semibold">No Transactions Found</p>
+                <p className="text-sm text-slate-400">
+                  Try adjusting your search or filters to find what you're looking for.
+                </p>
               </div>
             )}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              itemsPerPage={itemsPerPage}
-              totalItemsInCurrentPage={histories?.length || 0}
-            />
           </div>
+          {histories?.length > 0 && (
+            <div className="mt-6">
+                <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                itemsPerPage={itemsPerPage}
+                totalItemsInCurrentPage={histories?.length || 0}
+                />
+            </div>
+          )}
         </div>
 
         {selectedRow && (
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogContent className="max-w-full sm:max-w-[500px] md:max-w-[700px] lg:max-w-[900px] p-8 border border-[#638B8B] rounded-lg shadow-lg bg-gradient-to-r from-[#D9E6E6] to-[#A0C0C0] transform transition-transform duration-300 ease-in-out">
-              <div id="transaction-details">
+            <DialogContent className="sm:max-w-3xl p-6">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold text-slate-800">
+                        Invoice Details
+                    </DialogTitle>
+                    <DialogDescription>
+                        Transaction ID: {selectedRow.public_id}
+                    </DialogDescription>
+                </DialogHeader>
+                <div id="transaction-details" className="mt-4">
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="text-sm text-slate-600">
+                            <p><strong>Date:</strong> {moment(selectedRow.created_at).format("DD MMMM YYYY")}</p>
+                            <p><strong>Cashier:</strong> {selectedRow.user?.name}</p>
+                            <p><strong>Outlet:</strong> {selectedRow.outlet?.name}</p>
+                        </div>
+                        <div className="flex items-center">
+                            <Image src={logoReception} alt="Fisika Farma Logo" className="w-24 h-auto object-contain" />
+                        </div>
+                    </div>
 
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h2 className="text-3xl font-extrabold text-[#4F6A6A]">Invoice</h2>
-                    <p className="text-lg font-semibold text-[#638B8B]">No: {selectedRow.id}</p>
-                  </div>
-                  <div className="flex items-center">
-                    <Image src={logoReception} alt="Fisika Farma Logo" className="w-24 h-auto object-contain" />
-                  </div>
-                </div>
-
-                <div className="mb-8 bg-white p-4 rounded-lg shadow-inner border border-[#8BB2B2]">
-                  <p><strong>Date:</strong> {new Date(selectedRow.created_at).toLocaleDateString()}</p>
-                  <p><strong>Cashier Name:</strong> {selectedRow.user?.name}</p>
-                  <p><strong>Outlet:</strong> {selectedRow.outlet?.name}</p>
-                </div>
-
-                <hr className="my-6 border-[#638B8B]" />
-
-                <div className="mb-8">
-                  <table className="w-full text-sm bg-white rounded-lg shadow border border-[#638B8B]">
-                    <thead className="bg-[#8BB2B2]">
-                      <tr className="border-b">
-                        <th className="text-left p-2 text-white">Item</th>
-                        <th className="text-left p-2 text-white">Price</th>
-                        <th className="text-left p-2 text-white">Qty</th>
-                        <th className="text-right p-2 text-white">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedRow.order_details.map((item) => (
-                        <tr key={item.id} className="border-b hover:bg-[#A0C0C0]">
-                          <td className="p-2">{item.items.name}</td>
-                          <td className="p-2">Rp {Number(item.price).toLocaleString('id-ID')}</td>
-                          <td className="p-2">{item.quantity}</td>
-                          <td className="p-2 text-right">Rp {(item.quantity * item.price).toLocaleString('id-ID')}</td>
+                    <div className="rounded-lg border border-slate-200 overflow-hidden mb-6">
+                    <table className="w-full text-sm">
+                        <thead className="bg-slate-100/80">
+                        <tr className="border-b border-slate-200">
+                            <th className="p-3 text-left font-semibold text-slate-600 uppercase">Item</th>
+                            <th className="p-3 text-right font-semibold text-slate-600 uppercase">Price</th>
+                            <th className="p-3 text-center font-semibold text-slate-600 uppercase">Qty</th>
+                            <th className="p-3 text-right font-semibold text-slate-600 uppercase">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        </thead>
+                        <tbody>
+                        {selectedRow.order_details.map((item) => (
+                            <tr key={item.id} className="border-b border-slate-100 last:border-b-0">
+                            <td className="p-3 font-medium text-slate-800">{item.items.name}</td>
+                            <td className="p-3 text-right text-slate-600">Rp {Number(item.price).toLocaleString('id-ID')}</td>
+                            <td className="p-3 text-center text-slate-600">{item.quantity}</td>
+                            <td className="p-3 text-right font-medium text-slate-800">Rp {(item.quantity * item.price).toLocaleString('id-ID')}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                    </div>
 
-                <div className="text-right mb-8">
-                  <p><strong>Subtotal:</strong> Rp {Number(selectedRow.total_payment).toLocaleString('id-ID')}</p>
-                  <p><strong>VAT (5%):</strong> Rp {(selectedRow.total_payment * 0.05).toLocaleString('id-ID')}</p>
-                  <p className="text-xl font-bold text-[#4F6A6A]"><strong>Total Payment:</strong> Rp {(selectedRow.total_payment * 1.05).toLocaleString('id-ID')}</p>
+                    <div className="flex justify-end mb-6">
+                        <div className="w-full max-w-xs text-sm">
+                            <div className="flex justify-between py-1 text-slate-600">
+                                <span>Subtotal:</span>
+                                <span>Rp {Number(selectedRow.total_payment).toLocaleString('id-ID')}</span>
+                            </div>
+                            <div className="flex justify-between py-1 text-slate-600">
+                                <span>VAT (5%):</span>
+                                <span>Rp {(selectedRow.total_payment * 0.05).toLocaleString('id-ID')}</span>
+                            </div>
+                            <div className="flex justify-between py-2 mt-2 border-t-2 border-slate-200 text-base font-bold text-slate-800">
+                                <span>Total Payment:</span>
+                                <span>Rp {(selectedRow.total_payment * 1.05).toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <div className="text-sm">
-                  <p><strong>Status:</strong> <span className={`font-bold ${selectedRow.status === 'completed' ? 'text-green-600' : 'text-red-600'}`}>{selectedRow.status}</span></p>
-                  <p className="italic text-gray-500">Additional Information: the taxes you pay will be used 100% for national development.</p>
-                </div>
-
-              </div>
-              <DialogFooter className="flex justify-center mt-4">
-                <Button onClick={downloadPDF} className="bg-[#638B8B] text-white hover:bg-[#4F6A6A] py-2 px-4 rounded-lg shadow-md transition duration-300 transform hover:scale-105">Download PDF</Button>
+              <DialogFooter>
+                <Button onClick={downloadPDF} className="bg-sky-600 text-white hover:bg-sky-700 h-10 px-6 rounded-lg font-semibold">Download PDF</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

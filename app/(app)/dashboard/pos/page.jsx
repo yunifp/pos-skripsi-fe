@@ -3,7 +3,7 @@
 import useCrud from "@/hooks/useCRUD";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const Pos = () => {
   const { create, token } = useCrud("orders");
@@ -35,15 +35,20 @@ const Pos = () => {
   }, [token]);
 
   useEffect(() => {
-    if (!userInformation.outlet_id && !userInformation.user_id) return;
-    createOrder();
+    if (userInformation.user_id && userInformation.outlet_id) {
+      createOrder();
+    }
   }, [userInformation]);
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center flex-col gap-8">
-      <h1>Creating new order</h1>
-      <img src="/images/loader.gif" alt="" className="w-20 opacity-50" />
+    <div className="flex h-screen w-screen items-center justify-center flex-col gap-4 bg-slate-50 text-slate-700 antialiased">
+      <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-sky-500"></div>
+      <h1 className="text-2xl font-semibold tracking-tight mt-4">
+        Creating New Order
+      </h1>
+      <p className="text-slate-500">Please wait a moment...</p>
     </div>
   );
 };
+
 export default Pos;
