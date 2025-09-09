@@ -23,9 +23,9 @@ const Pos = () => {
 
   return (
     <div className="bg-slate-100 w-full min-h-screen antialiased">
-      <div className="grid grid-cols-1 lg:grid-cols-5 w-full min-h-screen gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8">
+      <div className="grid grid-cols-1 lg:grid-cols-5 w-full min-h-screen gap-4 sm:gap-6 lg:gap-8 p-6 sm:p-6 lg:p-8">
         
-        <div className="lg:col-span-3 flex flex-col">
+        <div className="lg:col-span-3 flex flex-col lg:mt-16">
           <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full">
             <ItemHeader
               search={search}
@@ -60,7 +60,7 @@ const Pos = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 lg:mt-16">
           <Transaction
             orderDetails={orderDetails}
             amount={amount}
