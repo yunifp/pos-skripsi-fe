@@ -271,7 +271,7 @@ export default function Page({}) {
             </div>
 
             <div className="flex items-center gap-3">
-              {role === "ADMIN" && (
+              {/* {role === "ADMIN" && (
                 <div className="relative">
                   <select
                     id="outlet_id_filter"
@@ -289,7 +289,7 @@ export default function Page({}) {
                     ))}
                   </select>
                 </div>
-              )}
+              )} */}
               <Button
                 className="h-11 px-5 inline-flex items-center justify-center rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all font-semibold gap-2 shadow-sm hover:shadow-md transform hover:-translate-y-px"
                 onClick={() => {

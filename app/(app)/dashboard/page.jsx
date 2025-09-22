@@ -49,12 +49,12 @@ const Dashboard = () => {
       icon: faCartShopping,
       subText: "Kelola item dan lacak inventaris.",
     },
-    {
-      path: "/dashboard/outlet",
-      text: "Outlet",
-      icon: faStore,
-      subText: "Kelola toko dan lokasi Anda.",
-    },
+    // {
+    //   path: "/dashboard/outlet",
+    //   text: "Outlet",
+    //   icon: faStore,
+    //   subText: "Kelola toko dan lokasi Anda.",
+    // },
     {
       path: "/dashboard/stock-cards",
       text: "Stock",

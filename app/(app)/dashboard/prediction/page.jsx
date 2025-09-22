@@ -24,7 +24,7 @@ const PredictionPage = () => {
     data: ordersData,
     fetchAllData: fetchOrders,
     loading: ordersLoading,
-  } = useCrud("orders");
+  } = useCrud("histories");
   
 
   // State untuk data dan status UI
